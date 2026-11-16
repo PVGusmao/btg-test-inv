@@ -47,7 +47,18 @@ public sealed class AccountsControllerTests
         IAccountRepository repository,
         IMemoryCache cache,
         IAccountLifecyclePublisher publisher) =>
-        new(repository, cache, publisher, new InMemoryNotificationRegistry(), NullLogger<AccountsController>.Instance);
+        new(repository, cache, publisher, new FakeNotificationRegistry(), NullLogger<AccountsController>.Instance);
+
+    private sealed class FakeNotificationRegistry : INotificationRegistry
+    {
+        public Task RegisterAsync(AreaNotification notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyCollection<AreaNotification>> GetByAccountAsync(
+            Guid accountId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyCollection<AreaNotification>>(Array.Empty<AreaNotification>());
+    }
 
     private sealed class FakePublisher : IAccountLifecyclePublisher
     {
@@ -65,10 +76,52 @@ public sealed class AccountsControllerTests
         private readonly Dictionary<Guid, Account> _accounts;
 
         public FakeRepository(params Account[] accounts) => _accounts = accounts.ToDictionary(account => account.Id);
-        public IReadOnlyCollection<Account> GetAll() => _accounts.Values.ToArray();
-        public Account? GetById(Guid id) => _accounts.GetValueOrDefault(id);
-        public void Add(Account account) => _accounts.Add(account.Id, account);
-        public void Update(Account account) => _accounts[account.Id] = account;
-        public bool Remove(Guid id) => _accounts.Remove(id);
+        public Task<IReadOnlyCollection<Account>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyCollection<Account>>(_accounts.Values.ToArray());
+
+        public Task<Account?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_accounts.GetValueOrDefault(id));
+
+        public Task<IReadOnlyCollection<Account>> GetByIdentifierAsync(
+            string identifier,
+            bool includeDeactivated = false,
+            CancellationToken cancellationToken = default)
+        {
+            IEnumerable<Account> results = _accounts.Values;
+            if (Guid.TryParse(identifier, out var id))
+                results = results.Where(account => account.Id == id);
+            else
+                results = results.Where(account => account.TaxId == identifier);
+            if (!includeDeactivated)
+                results = results.Where(account => account.Deactivated == 0);
+
+            return Task.FromResult<IReadOnlyCollection<Account>>(results.ToArray());
+        }
+
+        public Task<bool> ExistsByTaxIdAsync(
+            string taxId,
+            Guid? excludingAccountId = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_accounts.Values.Any(account =>
+                account.TaxId == taxId && account.Id != excludingAccountId));
+
+        public Task AddAsync(Account account, CancellationToken cancellationToken = default)
+        {
+            _accounts.Add(account.Id, account);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(Account account, CancellationToken cancellationToken = default)
+        {
+            _accounts[account.Id] = account;
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> DeactivateAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            if (!_accounts.TryGetValue(id, out var account)) return Task.FromResult(false);
+            _accounts[id] = account.Deactivate();
+            return Task.FromResult(true);
+        }
     }
 }

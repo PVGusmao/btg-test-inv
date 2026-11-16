@@ -11,23 +11,26 @@ public enum AccountStatus
 
 public sealed class Account
 {
-    public Guid Id { get; }
+    public Guid Id { get; private set; }
 
     [JsonPropertyName("nomeTitular")]
-    public string HolderName { get; }
+    public string HolderName { get; private set; }
 
     [JsonPropertyName("cpf")]
-    public string TaxId { get; }
+    public string TaxId { get; private set; }
 
     [JsonPropertyName("status")]
     [JsonConverter(typeof(AccountStatusJsonConverter))]
-    public AccountStatus Status { get; }
+    public AccountStatus Status { get; private set; }
 
     [JsonPropertyName("validacaoPrevencao")]
-    public int FraudPreventionValidation { get; }
+    public int FraudPreventionValidation { get; private set; }
 
     [JsonPropertyName("validacaoCartao")]
-    public int CardValidation { get; }
+    public int CardValidation { get; private set; }
+
+    [JsonPropertyName("desativado")]
+    public int Deactivated { get; private set; }
 
     public Account(string holderName, string taxId, AccountStatus status)
     {
@@ -37,10 +40,11 @@ public sealed class Account
         Status = status;
         FraudPreventionValidation = 0;
         CardValidation = 0;
+        Deactivated = 0;
     }
 
     private Account(Guid id, string holderName, string taxId, AccountStatus status,
-        int fraudPreventionValidation, int cardValidation)
+        int fraudPreventionValidation, int cardValidation, int deactivated)
     {
         Id = id;
         HolderName = holderName;
@@ -48,16 +52,23 @@ public sealed class Account
         Status = status;
         FraudPreventionValidation = fraudPreventionValidation;
         CardValidation = cardValidation;
+        Deactivated = deactivated;
     }
 
     public Account Update(string holderName, string taxId, AccountStatus status) =>
-        new(Id, holderName, DigitsOnly(taxId), status, FraudPreventionValidation, CardValidation);
+        new(Id, holderName, DigitsOnly(taxId), status, FraudPreventionValidation, CardValidation, Deactivated);
 
     public Account ConfirmFraudPrevention() =>
-        new(Id, HolderName, TaxId, Status, 1, CardValidation);
+        new(Id, HolderName, TaxId, Status, 1, CardValidation, Deactivated);
 
     public Account ConfirmCard() =>
-        new(Id, HolderName, TaxId, Status, FraudPreventionValidation, 1);
+        new(Id, HolderName, TaxId, Status, FraudPreventionValidation, 1, Deactivated);
+
+    public Account Deactivate() =>
+        new(Id, HolderName, TaxId, Status, FraudPreventionValidation, CardValidation, 1);
+
+    public Account Reactivate() =>
+        new(Id, HolderName, TaxId, Status, FraudPreventionValidation, CardValidation, 0);
 
     private static string DigitsOnly(string taxId) =>
         new(taxId.Where(char.IsDigit).ToArray());
