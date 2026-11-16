@@ -35,7 +35,7 @@ Criação, atualização, desativação, reativação e confirmações invalidam
 
 Na criação, atualização, desativação, reativação ou confirmação, a API publica um evento local para dois consumidores simulados: prevenção a fraudes e cartões. Cada consumidor grava sua notificação em `AreaNotifications`. Essa simulação roda dentro do processo da API; não utiliza um serviço externo de mensageria.
 
-As rotas de confirmação salvam a alteração, invalidam o cache e retornam uma frase curta com o nome do titular e a área que confirmou, sem retornar o objeto inteiro da conta.
+As rotas de confirmação salvam a alteração, invalidam o cache e retornam uma frase de confirmação.
 
 ## Endpoints
 
@@ -59,7 +59,7 @@ Os logs indicam quando uma leitura veio do cache ou do SQLite, quando uma conta 
 
 ## Testes
 
-Os testes unitários ficam em `ProjetoBtg.Api.Tests` e podem ser executados com:
+Os testes unitários podem ser executados com:
 
 ```powershell
 dotnet test .\ProjetoBtg.Api.Tests\ProjetoBtg.Api.Tests.csproj
